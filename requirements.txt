@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+langchain>=0.2.6
+langgraph>=0.0.56
+google-generativeai>=0.3.0
+pydantic
+python-multipart
+docker
