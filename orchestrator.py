@@ -23,6 +23,7 @@ class Orchestrator:
         self.ai_client = ai_client or BaseAgent()  
         self.docker_agent = DockerBuilderAgent()
         self.solution_writer = SolutionWriterAgent(ai_client=self.ai_client)
+        
 
     def build_and_run_docker(self, zip_file_path: str, config_json: dict, project_description: str):
         # 1. Build docker image with boilerplate
@@ -53,8 +54,16 @@ class Orchestrator:
         # 3. Generate code using solution writer agent
         write_summary = self.solution_writer.write_solution(src_dir, project_description)
 
+        final_build = self.docker_agent.build_image_with_boilerplate(
+            zip_file_path=zip_file_path,
+            solution_dir=src_dir  # 👈 include the updated source
+        )
+        print(f"[Orchestrator] Final build result: {final_build}")
+        if final_build["status"] != "success":
+            return {"status": "final_build_failed", "details": final_build}
+
         # 4. Run docker container with test command
-        run_res = self.docker_agent.run_container(image_tag, config_json=config_json 
+        run_res = self.docker_agent.run_container( final_build["image_tag"], config_json=config_json 
                                                 #   ,solution_dir=src_dir 
                                                   )
 

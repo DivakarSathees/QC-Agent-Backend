@@ -12,14 +12,15 @@ class DockerBuilderAgent:
         self.base_image = base_image
         self.client = docker.from_env()
 
-    def build_image_with_boilerplate(self, zip_file_path: str, image_tag: str = None) -> Dict:
+    def build_image_with_boilerplate(self, zip_file_path: str, image_tag: str = None, solution_dir: str = None) -> Dict:
         """
         Build a docker image that contains the boilerplate zip.
         Returns: {"image_tag": ..., "status": "success/failure", "logs": "..."}
         """
         image_tag = image_tag or f"project_image_{uuid.uuid4().hex[:8]}"
         temp_dir = tempfile.mkdtemp()
-
+        print(f"[DockerBuilderAgent] Building image with tag: {image_tag}")
+        print(solution_dir)
         try:
             # Copy zip to temp
             boilerplate_name = os.path.basename(zip_file_path)
@@ -61,49 +62,54 @@ RUN for d in /home/coder/project/workspace/boilerplate/*; do \\
 # Default workdir
 WORKDIR /home/coder/project/workspace/
 """)
-            # Build the image
-            logs = self.client.images.build(path=temp_dir, tag=image_tag, rm=True)
-            print(logs) # For debugging
+        #     # Build the image
+        #     logs = self.client.images.build(path=temp_dir, tag=image_tag, rm=True)
+        #     print(logs) # For debugging
+        #     return {"status": "success", "image_tag": image_tag, "logs": str(logs)}
+        # except Exception as e:
+        #     return {"status": "failure", "error": str(e)}
+        # finally:
+        #     shutil.rmtree(temp_dir)
+                if solution_dir and os.path.exists(solution_dir):
+                    f.write(f"""
+    # Copy AI-generated solution files
+    COPY solution/ /home/coder/project/workspace/
+    """)
+
+                f.write("""
+    # Set working directory
+    WORKDIR /home/coder/project/workspace/
+    """)
+
+            # If solution exists, copy it into temp_dir so Docker build can access it
+            if solution_dir and os.path.exists(solution_dir):
+                print(f"[DockerBuilderAgent] Copying AI solution from {solution_dir} to Docker context...")
+                target_solution = os.path.join(temp_dir, "solution")
+                shutil.copytree(solution_dir, target_solution)
+
+            print(f"[DockerBuilderAgent] Building image {image_tag} ...")
+            image, logs = self.client.images.build(path=temp_dir, tag=image_tag, rm=True)
+            print(f"[DockerBuilderAgent] Build logs: {logs}")  # For debugging
+            print(f"[DockerBuilderAgent] Successfully built image: {image_tag}")
+            print(image)
             return {"status": "success", "image_tag": image_tag, "logs": str(logs)}
         except Exception as e:
             return {"status": "failure", "error": str(e)}
         finally:
-            shutil.rmtree(temp_dir)
+                shutil.rmtree(temp_dir, ignore_errors=True)
 
-#     def build_image_with_boilerplate(self, zip_file_path: str, image_tag: str = None) -> Dict:
-#         image_tag = image_tag or f"project_image_{uuid.uuid4().hex[:8]}"
-#         temp_dir = tempfile.mkdtemp()
-#         try:
-#             boilerplate_name = os.path.basename(zip_file_path)
-#             shutil.copy(zip_file_path, os.path.join(temp_dir, boilerplate_name))
 
-#             dockerfile_path = os.path.join(temp_dir, "Dockerfile")
-#             with open(dockerfile_path, "w") as f:
-#                 f.write(f"""
-# echo "Building Dockerfile..."
-# FROM {self.base_image}
-# RUN apt-get update && apt-get install -y unzip && rm -rf /var/lib/apt/lists/*
-# WORKDIR /workspace
-# COPY {boilerplate_name} /workspace/{boilerplate_name}
-# RUN unzip {boilerplate_name} -d /workspace/boilerplate
-# RUN find /workspace/boilerplate -name "*.sh" -exec chmod +x {{}} \\;
-# WORKDIR /workspace/boilerplate
-# """)
-#             logs_generator = self.client.images.build(path=temp_dir, tag=image_tag, rm=True, decode=True)
-#             log_output = []
-#             for chunk in logs_generator:
-#                 if 'stream' in chunk:
-#                     log_output.append(chunk['stream'].strip())
-#                 elif 'error' in chunk:
-#                     log_output.append(f"ERROR: {chunk['error']}")
-
-#             return {"status": "success", "image_tag": image_tag, "logs": "\n".join(log_output)}
-
-#         except Exception as e:
-#             return {"status": "failure", "error": str(e)}
-#         finally:
-#             shutil.rmtree(temp_dir)
-
+    def build_image_from_directory(self, directory: str) -> Dict:
+        """
+        Builds a Docker image directly from a local directory (after AI modifications).
+        """
+        try:
+            tag = f"ai_solution_image"
+            print(f"[DockerBuilderAgent] Building new image from directory: {directory}")
+            image, logs = self.client.images.build(path=directory, tag=tag)
+            return {"status": "success", "image_tag": tag}
+        except Exception as e:
+            return {"status": "failure", "error": str(e)}
 
     def run_container(self, image_tag: str, config_json: dict, detach=False) -> Dict:
         """
