@@ -1,15 +1,29 @@
 import json
 import google.generativeai as genai
 from config.settings import GEMINI_API_KEY
+import re
 
 class BaseAgent:
     def __init__(self, model_name="gemini-2.5-flash"):
         self.model = genai.GenerativeModel(model_name)
 
+    def run_prompt_test_extract(self, prompt: str):
+        try:
+            response = self.model.generate_content(prompt)
+            text = response.text.strip()
+            return {"status": "ok", "raw": text}
+        except Exception as e:
+            print(f"[TestCoverageAgent] ⚠️ LLM error: {e}")
+            return {"status": "error", "error": str(e), "raw": ""}
+
+
+
+
     def run_prompt(self, prompt: str):
         try:
             response = self.model.generate_content(prompt)
             text = response.text.strip()
+            print(f"[BaseAgent] ✅ Gemini response length: {text}")
 
             # Clean non-JSON outputs
             if not text.startswith("{"):

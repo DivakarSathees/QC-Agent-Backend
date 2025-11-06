@@ -134,20 +134,66 @@ Return only valid JSON — no markdown, no extra commentary.
             }
 
         # Write files
-        updated_files = result.get("files", {})
-        for path, new_content in updated_files.items():
-            if os.path.exists(path):
-                with open(path, "w", encoding="utf-8") as f:
-                    f.write(new_content)
-            else:
-                # Create missing directories if necessary
-                os.makedirs(os.path.dirname(path), exist_ok=True)
-                with open(path, "w", encoding="utf-8") as f:
-                    f.write(new_content)
+        # updated_files = result.get("files", {})
+        # for path, new_content in updated_files.items():
+        #     if os.path.exists(path):
+        #         with open(path, "w", encoding="utf-8") as f:
+        #             f.write(new_content)
+        #     else:
+        #         # Create missing directories if necessary
+        #         print(f"[SolutionWriterAgent] Creating new file at: {path}")
+        #         os.makedirs(os.path.dirname(path), exist_ok=True)
+        #         with open(path, "w", encoding="utf-8") as f:
+        #             f.write(new_content)
 
-        print(f"[SolutionWriterAgent] ✅ Updated {len(updated_files)} files successfully.")
-        return {
-            "status": "success",
-            "updated_files": list(updated_files.keys()),
-            "notes": result.get("notes", "")
-        }
+        # print(f"[SolutionWriterAgent] ✅ Updated {len(updated_files)} files successfully.")
+        # return {
+        #     "status": "success",
+        #     "updated_files": list(updated_files.keys()),
+        #     "notes": result.get("notes", "")
+        # }
+
+
+
+        # updated_files = result.get("files", {})
+        # for relative_path, new_content in updated_files.items():
+        #     abs_path = os.path.join(src_directory, relative_path)
+        #     os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+        #     with open(abs_path, "w", encoding="utf-8") as f:
+        #         f.write(new_content)
+        #     print(f"[SolutionWriterAgent] ✅ Wrote {relative_path}")
+
+        # print(f"[SolutionWriterAgent] ✅ Updated {len(updated_files)} files successfully.")
+        # return {
+        #     "status": "success",
+        #     "updated_files": list(updated_files.keys()),
+        #     "notes": result.get("notes", "")
+        # }
+    
+        updated_files = result.get("files", {})
+        for ai_path, new_content in updated_files.items():
+            # Normalize the path to handle cases like WORKSPACE/springapp/...
+            normalized_path = os.path.normpath(ai_path)
+            print(f"[SolutionWriterAgent] Processing AI path: {ai_path} → Normalized: {normalized_path}")
+            # Try to strip any leading part that overlaps with src_directory name
+            src_dir_name = os.path.basename(src_directory)
+            parts = normalized_path.split(os.sep)
+            if src_dir_name in parts:
+                # Keep only the part starting from src_dir_name
+                normalized_path = os.path.join(*parts[parts.index(src_dir_name) + 1:])
+
+            # Join safely under src_directory
+            abs_path = os.path.join(src_directory, normalized_path)
+
+            # Ensure it doesn't escape the project root (security & correctness)
+            abs_path = os.path.normpath(abs_path)
+            if not abs_path.startswith(os.path.abspath(src_directory)):
+                print(f"[⚠️ Warning] Skipping unsafe path outside src_directory: {ai_path}")
+                continue
+
+            # Create directories and write file
+            os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+            with open(abs_path, "w", encoding="utf-8") as f:
+                f.write(new_content)
+
+            print(f"[SolutionWriterAgent] ✅ Wrote file: {abs_path}")

@@ -21,7 +21,7 @@ from agents.solution_writer_agent import SolutionWriterAgent
 class Orchestrator:
     def __init__(self, ai_client=None):
         self.ai_client = ai_client or BaseAgent()  
-        self.docker_agent = DockerBuilderAgent()
+        self.docker_agent = DockerBuilderAgent(language="java")
         self.solution_writer = SolutionWriterAgent(ai_client=self.ai_client)
         
 

@@ -3,6 +3,8 @@ import json
 
 class CorrectionAgent(BaseAgent):
     def correct(self, description: str, qc_results: dict):
+        print(f"[CorrectionAgent] Correcting description based on QC results.")
+        print(qc_results)
         prompt = f"""
 You are a Project Description Correction Agent.
 

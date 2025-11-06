@@ -2,7 +2,7 @@ from agents.base_agent import BaseAgent
 import json
 
 class ImplementationReadinessAgent(BaseAgent):
-    def analyze(self, results: dict):
+    def analyze(self, description: str, results: dict):
         prompt = f"""
 You are an Implementation Readiness Agent.
 Given the QC results below, determine if this project is ready for implementation.
