@@ -443,18 +443,25 @@ RUN apt-get update && \
 # === NVM setup ===
 ENV NVM_DIR=/usr/local/nvm
 ENV NODE_VERSION=18.20.4
+ENV NODE_VERSION_14=14.17.1
 ENV PATH=$NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
-
+ENV PATH=$NVM_DIR/versions/node/v$NODE_VERSION_14/bin:$PATH
+# === Install NVM + Node.js ===
+                            
 RUN mkdir -p $NVM_DIR && \
     curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh -o /tmp/install_nvm.sh && \
     bash /tmp/install_nvm.sh && \
     bash -lc "export NVM_DIR=$NVM_DIR && . $NVM_DIR/nvm.sh && \
       nvm install $NODE_VERSION && \
-      nvm alias default $NODE_VERSION && \
+      nvm install $NODE_VERSION_14 && \
+      nvm alias default $NODE_VERSION_14 && \
       nvm use default" && \
     ln -sf $NVM_DIR/versions/node/v$NODE_VERSION/bin/node /usr/local/bin/node && \
     ln -sf $NVM_DIR/versions/node/v$NODE_VERSION/bin/npm /usr/local/bin/npm && \
-    ln -sf $NVM_DIR/versions/node/v$NODE_VERSION/bin/npx /usr/local/bin/npx
+    ln -sf $NVM_DIR/versions/node/v$NODE_VERSION/bin/npx /usr/local/bin/npx && \
+    ln -sf $NVM_DIR/versions/node/v$NODE_VERSION_14/bin/node /usr/local/bin/node14 && \
+    ln -sf $NVM_DIR/versions/node/v$NODE_VERSION_14/bin/npm /usr/local/bin/npm14 && \
+    ln -sf $NVM_DIR/versions/node/v$NODE_VERSION_14/bin/npx /usr/local/bin/npx14
 
 # === Verify installations ===
 RUN java -version && mvn -version && node -v && npm -v && chromium --version && mysqld --version
