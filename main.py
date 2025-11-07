@@ -45,8 +45,10 @@
 #         "docker_results": docker_result
 #     }
 
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+import httpx
 from starlette.responses import StreamingResponse
 import tempfile
 import os
@@ -119,3 +121,54 @@ async def qc_full_run(
             yield f"data: {json.dumps({'stage': 'completed'})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+# -------------------------
+# /fetch-qbs endpoint
+# -------------------------
+@app.post("/fetch-qbs")
+async def fetch_qbs(request: Request):
+    """
+    Fetches Question Banks from Examly API using an Auth Token.
+    Body Params:
+        - authToken: str (in body or query)
+        - search: str (optional)
+    """
+    data = await request.json()
+    auth_token = data.get("authToken") or request.query_params.get("authToken")
+    search_term = data.get("search", "")
+
+    if not auth_token:
+        return JSONResponse({"error": "Auth token is required"}, status_code=400)
+
+    url = "https://api.examly.io/api/v2/questionbanks"
+    payload = {
+        "branch_id": "all",
+        "search": search_term,
+        "limit": 5000,
+        "page": 1,
+        "visibility": "All",
+        "mainDepartmentUser": True,
+        "department_id": [
+            "617346bd-b9c8-468d-9099-12170fb3b570",
+            "8c9bb195-1e81-4506-bc39-c48e6450c2a0"
+        ]
+    }
+    headers = {
+        "Authorization": auth_token,
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+            qbs = response.json()
+            return JSONResponse(qbs)
+    except httpx.HTTPStatusError as e:
+        print("Error fetching QBs:", e.response.text)
+        return JSONResponse({"error": "Failed to fetch QBs", "details": e.response.text}, status_code=500)
+    except Exception as e:
+        print("Error fetching QBs:", str(e))
+        return JSONResponse({"error": "Unexpected error", "details": str(e)}, status_code=500)
