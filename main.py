@@ -108,15 +108,15 @@ async def qc_full_run(
 
             # Start both tasks
             qc_task = asyncio.create_task(run_qc_task(description, tmp_path))
-            # docker_task = asyncio.create_task(run_docker_task(tmp_path, config_json, description))
+            docker_task = asyncio.create_task(run_docker_task(tmp_path, config_json, description))
 
             # Wait for QC first
             qc_result = await qc_task
             yield f"data: {json.dumps({'stage': 'qc_completed', 'qc_results': qc_result})}\n\n"
 
             # Then Docker
-            # docker_result = await docker_task
-            # yield f"data: {json.dumps({'stage': 'docker_completed', 'docker_results': docker_result})}\n\n"
+            docker_result = await docker_task
+            yield f"data: {json.dumps({'stage': 'docker_completed', 'docker_results': docker_result})}\n\n"
 
             yield f"data: {json.dumps({'stage': 'completed'})}\n\n"
 
